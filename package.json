@@ -1,5 +1,5 @@
 {
-  "name": "db-sync",
+  "name": "@pablovicz/db-sync",
   "version": "1.0.0",
   "description": "Db syncronizer for development purposes",
   "main": "index.js",
@@ -10,9 +10,6 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/pablovicz/db-sync.git"
-  },
-  "publishConfig": {
-    "registry": "https://npm.pkg.github.com"
   },
   "keywords": [
     "typeorm"
@@ -27,5 +24,6 @@
     "dotenv": "^16.4.5",
     "pg": "^8.12.0",
     "pg-query-stream": "^4.6.0"
-  }
+  },
+  "devDependencies": {}
 }
