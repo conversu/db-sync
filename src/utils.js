@@ -8,11 +8,11 @@ async function createDirectoryIfNotExists(dirPath) {
 
             // Check if the directory exists
             try {
-                await fs.access(absolutePath);
+                fs.access(absolutePath);
                 console.log('Directory already exists:', absolutePath);
             } catch (err) {
                 // Directory does not exist, so create it
-                await fs.mkdir(absolutePath, { recursive: true });
+                fs.mkdir(absolutePath, { recursive: true });
                 console.log('Directory created:', absolutePath);
             }
         } catch (err) {
@@ -25,8 +25,32 @@ function removeFile(path) {
     fs.unlink(path, () => { });
 }
 
-export {
-    createDirectoryIfNotExists,
-    removeFile
 
+function isDir(dirPath) {
+
+    if (!dirPath) {
+        return false;
+    }
+
+    return fs.existsSync(dirPath) && fs.statSync(dirPath).isDirectory();
+}
+
+function isFile(dirPath) {
+
+    if (!dirPath) {
+        return false;
+    }
+
+    return fs.existsSync(dirPath) && fs.statSync(dirPath).isFile();
+}
+
+const PathUtils = {
+    createDirectoryIfNotExists,
+    removeFile,
+    isDir,
+    isFile
+}
+
+export {
+    PathUtils
 }

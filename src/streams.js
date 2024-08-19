@@ -82,37 +82,9 @@ class CommentTransformStream extends Transform {
     }
 }
 
-
-const exportStream = async (pool, queryStream, transformStream, writeStream) => {
-
-    pool.connect(async (err, client, done) => {
-        if (err) console.error(err);
-
-        const stream = client.query(queryStream);
-
-        stream
-            .pipe(transformStream)
-            .pipe(writeStream)
-            .on("error", console.error)
-            .on("finish", () => {
-                done();
-                writeStream.end();
-            })
-            .on("end", () => {
-                writeStream.destroy();
-                transformStream.destroy();
-                done();
-                process.kill(process.pid, 'SIGTERM')
-                console.log('aquii')
-            });
-    });
-};
-
-
 export { 
     InterpolateInsertCommandStream, 
     TableRowsStream, 
     TableCommentsStream,
-    CommentTransformStream,
-    exportStream
+    CommentTransformStream
  }
