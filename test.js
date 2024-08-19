@@ -1,15 +1,11 @@
 
 import DbExporter from "./src/exporter.js";
 
-async function main() {
+async function runner(params) {
   const exporter = new DbExporter();
 
   try {
-    exporter.initialize({
-      path: 'C:/projetos/pablo/db-sync',
-      filename: 'test',
-      env: new URL('.env.example', import.meta.url).pathname.slice(1),
-    })
+    exporter.initialize(params)
 
     const result = await exporter.exportDatabase();
     console.log(result)
@@ -19,4 +15,7 @@ async function main() {
 }
 
 
-await main().finally(() => { process.exit() })
+await runner().finally(() => { process.exit() })
+
+
+module.exports = { runner };

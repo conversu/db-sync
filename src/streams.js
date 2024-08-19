@@ -1,19 +1,22 @@
 import { Readable, Transform } from 'stream';
+import Logger from './logger.js';
 
 class InterpolateInsertCommandStream extends Transform {
 
     #table
     #columns;
+    #logger;
 
-    constructor(table, columns, options = {}) {
+    constructor(table, columns, options = {}, logger) {
         super(options);
         this.#table = table;
         this.#columns = columns;
+        this.#logger = logger ?? new Logger('quiet');
     }
 
     _transform(row, encoding, callback) {
-        // console.log('-'.repeat(50))
-        // console.log('>>> transform: ', this.#table, '->', row[this.#columns[0]])
+        this.#logger.log('-'.repeat(50))
+        this.#logger.log('>>> transform: ', this.#table, '->', row[this.#columns[0]])
 
         const valuesAsString = this.#columns.map(column => {
 
@@ -29,8 +32,8 @@ class InterpolateInsertCommandStream extends Transform {
 
         const columnsAsString = this.#columns.map(value => `"${value}"`).join(', ')
         const transformed = `INSERT INTO "${this.#table}" (${columnsAsString}) VALUES (${valuesAsString});\n`
-        // console.log(transformed)
-        // console.log('')
+        this.#logger.log(transformed)
+        this.#logger.log('')
         callback(null, transformed);
     }
 }
@@ -82,9 +85,9 @@ class CommentTransformStream extends Transform {
     }
 }
 
-export { 
-    InterpolateInsertCommandStream, 
-    TableRowsStream, 
+export {
+    InterpolateInsertCommandStream,
+    TableRowsStream,
     TableCommentsStream,
     CommentTransformStream
- }
+}

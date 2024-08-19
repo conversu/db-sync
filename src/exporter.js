@@ -1,12 +1,14 @@
 import dotenv from 'dotenv';
 import fs from 'fs';
+import { resolve } from 'path';
 import QueryStream from 'pg-query-stream';
 import PostgresConnection from './database.js';
 import { DbConfigBuilder } from './config.js';
 import { PathUtils } from './utils.js';
 import { TableRowsStream, InterpolateInsertCommandStream, TableCommentsStream, CommentTransformStream } from './streams.js'
 import { pipelineAsync } from './pipeline.js';
-import {  resolve } from 'path';
+import Logger from './logger.js';
+
 
 
 
@@ -18,10 +20,14 @@ class DbExporter {
     #tables;
     #schemas;
     #isDefaultPath;
+    #logger;
+    #globalRows;
+    #start;
 
 
     constructor() {
-
+        this.#globalRows = 0
+        this.#logger = new Logger('quiet')
     }
 
 
@@ -72,11 +78,19 @@ class DbExporter {
     * filename {filename} - the filename of the generated file
     * env {string} - the path of env file that contains the configurations
     * config {string} - if informed will be used for connection
+    * mode {quiet | debug} - log mode
     * } params 
     */
     initialize(params) {
+        this.#logger.setMode(params?.mode ?? 'quiet')
+        this.#logger.log('')
+        this.#logger.log('#'.repeat(50));
+        this.#logger.log(`# DB-SYNC - EXPORT`);
+        this.#logger.log('#'.repeat(50));
+        this.#logger.log('')
         this.#setDbConfig(params);
         this.#setPaths(params);
+        this.#start = new Date();
     }
 
 
@@ -103,16 +117,16 @@ class DbExporter {
     }) {
 
         const { batchSize, encoding } = options;
-
-        console.log(`Processing table: ${table}`);
-        console.log('')
+        this.#logger.log('');
+        this.#logger.log(`Processing table: ${table}`);
+        this.#logger.log('')
         const rowsCount = await pool.query(`SELECT count(*) FROM "${table}"`);
-        console.log(`rows: ${rowsCount.rows[0].count}`)
+        this.#logger.log(`rows: ${rowsCount.rows[0].count}`)
         const tableSchema = this.#schemas[table];
         const columns = tableSchema.map(column => column.column_name);
-        console.log("Preparing query stream...");
+        this.#logger.log("Preparing query stream...");
 
-        console.log("Stream created, beginning to process...");
+        this.#logger.log("Stream created, beginning to process...");
 
         const writeStream = options?.writeStream ?? fs.createWriteStream(this.#outFile, {
             encoding: encoding ?? 'utf-8',
@@ -157,11 +171,12 @@ class DbExporter {
         )
 
         const duration = new Date().getTime() - start;
-
+        this.#globalRows += Number(rowsCount.rows[0].count);
+        const perf = `${rowsCount.rows[0].count} rows exported in ${duration / 1000} sec(s)`;
         await pipelineAsync(
             new TableCommentsStream([
                 '\n',
-                `-- ${rowsCount.rows[0].count} rows exported in ${duration / 1000} sec(s)`,
+                `-- ${perf}`,
                 `-- ${'*'.repeat(83)} --`,
                 ' ',
                 ' ',
@@ -174,6 +189,7 @@ class DbExporter {
             })
         )
 
+        this.#logger.log(perf);
 
         return;
     }
@@ -202,7 +218,7 @@ class DbExporter {
         if (this.#isDefaultPath) {
             this.#outFile = resolve(this.#outPath, `${table.toLowerCase()}.sql`)
         }
-        
+
         PathUtils.removeFile(this.#outFile)
         const pg = new PostgresConnection(this.#database);
         await pg.connect();
@@ -228,7 +244,6 @@ class DbExporter {
 
         const { exclude, batchSize, encoding } = params;
 
-        console.log("STARTED: ", new Date());
         await this.#collectTables();
         await this.#collectTableSchemas();
 
@@ -241,22 +256,36 @@ class DbExporter {
                 tables = tables.filter(table => !exclude.includes(table))
             }
             for await (const table of tables) {
-                console.log('#'.repeat(50))
+
+                this.#logger.log('')
+                this.#logger.log('-'.repeat(100))
                 await this.#processTable(pool, table, { batchSize, encoding });
             }
 
         } catch (error) {
-            console.error("Error during export: ", error);
+            this.#logger.error(error);
         } finally {
             // Close the PostgreSQL pool to release all resources
             await pool.end();
-            console.log("Export completed.");
+            this.#logger.log("Export completed.");
         }
 
+
+    }
+
+    finalize() {
+        const duration = new Date().getTime() - this.#start.getTime();
+        this.#logger.log('')
+        this.#logger.log('#'.repeat(50));
         console.log('')
-        console.log('#'.repeat(50));
-        console.log("FINISHED: ", new Date());
-        console.log('#'.repeat(50));
+        console.log('Output file available in:')
+        console.log(this.#outFile)
+        console.log('')
+        this.#logger.log('')
+        this.#logger.log('#'.repeat(50));
+        this.#logger.log(`# DONE - ${this.#globalRows} rows exported in ${duration / 1000} sec(s)`);
+        this.#logger.log('#'.repeat(50));
+        this.#logger.log('')
     }
 }
 

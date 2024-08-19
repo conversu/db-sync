@@ -22,7 +22,7 @@ async function createDirectoryIfNotExists(dirPath) {
 }
 
 function removeFile(path) {
-    if(isFile(path)){
+    if (isFile(path)) {
         fs.unlink(path, () => { });
     }
 }
@@ -45,12 +45,19 @@ function isFile(dirPath) {
 
     return fs.existsSync(dirPath) && fs.statSync(dirPath).isFile();
 }
+function exists(dirPath) {
+    if (!dirPath) {
+        return false;
+    }
+    return fs.existsSync(dirPath);
+}
 
 const PathUtils = {
     createDirectoryIfNotExists,
     removeFile,
     isDir,
-    isFile
+    isFile,
+    exists
 }
 
 export {
