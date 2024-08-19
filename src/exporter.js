@@ -6,6 +6,7 @@ import { DbConfigBuilder } from './config.js';
 import { PathUtils } from './utils.js';
 import { TableRowsStream, InterpolateInsertCommandStream, TableCommentsStream, CommentTransformStream } from './streams.js'
 import { pipelineAsync } from './pipeline.js';
+import {  resolve } from 'path';
 
 
 
@@ -16,6 +17,7 @@ class DbExporter {
     #database;
     #tables;
     #schemas;
+    #isDefaultPath;
 
 
     constructor() {
@@ -47,9 +49,20 @@ class DbExporter {
     }
 
     #setPaths(params) {
-        this.#outPath = params?.path ?? import.meta.url;
-        this.#outFile = new URL(params?.filename ?? `${this.#database.database.toLowerCase()}-data.sql`, this.#outPath);
-        PathUtils.removeFile(this.#outFile)
+        if (!params?.path || !PathUtils.isDir(params?.path)) {
+            throw new Error(`Output path directory "${params?.path}" it's not a valid directory path`)
+        }
+        const outPath = !!params?.path ? params?.path : import.meta.dirname;
+
+        const defaultFilename = `${this.#database.database.toLowerCase()}.sql`;
+        const filename = !!params?.filename ? `${params?.filename}.sql`.replace('.sql.sql', '.sql') : defaultFilename;
+
+        const outFile = resolve(outPath, filename);
+        this.#isDefaultPath = filename === defaultFilename;
+        PathUtils.createDirectoryIfNotExists(outPath);
+        PathUtils.removeFile(outFile);
+        this.#outPath = outPath;
+        this.#outFile = outFile;
     }
 
     /**
@@ -179,11 +192,17 @@ class DbExporter {
     }) {
 
         const { batchSize, encoding, path } = params;
-        PathUtils.createDirectoryIfNotExists(path);
+
         if (path) {
+            if (!PathUtils.isDir(path)) {
+                throw new Error(`Output path directory "${params?.path}" it's not a valid directory path`)
+            }
             this.#outPath = path;
         }
-        this.#outFile = new URL(`${table.toLowerCase()}.sql`, this.#outPath)
+        if (this.#isDefaultPath) {
+            this.#outFile = resolve(this.#outPath, `${table.toLowerCase()}.sql`)
+        }
+        
         PathUtils.removeFile(this.#outFile)
         const pg = new PostgresConnection(this.#database);
         await pg.connect();

@@ -6,6 +6,8 @@ async function main() {
 
   try {
     exporter.initialize({
+      path: 'C:/projetos/pablo/db-sync',
+      filename: 'test',
       env: new URL('.env.example', import.meta.url).pathname.slice(1),
     })
 
