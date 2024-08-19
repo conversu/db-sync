@@ -98,7 +98,7 @@ class Parser {
             throw new Error('Argument invalid! Argument "output" must be a valid directory path')
         }
 
-        this.outDir = output[1]
+        this.outputDir = output[1]
     }
 
     #validateFile() {
@@ -175,6 +175,18 @@ class Parser {
     }
 
 
+    get() {
+
+        return {
+            outputDir: this.outputDir,
+            outFile: this.outFile,
+            env: this.env,
+            operation: this.operation,
+            type: this.type,
+            table: this.table,
+            mode: this.mode
+        }
+    }
 
 }
 

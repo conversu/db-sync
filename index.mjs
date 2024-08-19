@@ -1,48 +1,37 @@
 import DbExporter from "./src/exporter.js";
-import ArgsParser from "./src/args.js";
-
 
 
 async function main() {
 
-    const args = ArgsParser(process.argv).parse()
+    const args = process.argv;
+    let instance = null;
 
-	const exporter = new DbExporter();
-
-    console.log(args.mode)
-
-	exporter.initialize({
-		path: args.outDir,
-		filename: args.outFile,
-		env: args.env,
-        mode: args.mode
-	});
-
-    if(args.operation === 'db:export'){
-
-        if(args.type === 'db'){
-
-            await exporter.exportDatabase();
-        }
-
-        if(args.type === 'table'){
-
-            await exporter.exportDatabase(args.table);
-        }
+    switch (args[2]) {
+        case 'db:export':
+            instance = DbExporter;
+            break;
+        case 'db:import':
+            throw new Error('Not implemented!')
+        case 'db:reset':
+            throw new Error('Not implemented!')
+        default:
+            throw new Error('Invalid operation! The first argument must be "db:export", "db:import" or "db:reset"')
     }
 
-    exporter.finalize();
-
+    const worker = new instance(args);
+    worker.initialize();
+    await worker.execute();
+    worker.finalize();
 }
 
 await main()
-	.then(() => {
-		
-	})
-	.catch((error) => {
-		console.error(error);
-	})
-	.finally(() => {
-		process.exit();
-	});
+    .then(() => {
+
+    })
+    .catch((error) => {
+        console.error(error);
+    })
+    .finally(() => {
+        process.exit();
+    });
 

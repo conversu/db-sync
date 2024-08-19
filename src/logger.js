@@ -21,9 +21,7 @@ class Logger {
     }
 
     error(content) {
-        if (this.#show) {
-            console.error(content)
-        }
+        console.error(content)
     }
 }
 

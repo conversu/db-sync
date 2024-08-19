@@ -8,6 +8,7 @@ import { PathUtils } from './utils.js';
 import { TableRowsStream, InterpolateInsertCommandStream, TableCommentsStream, CommentTransformStream } from './streams.js'
 import { pipelineAsync } from './pipeline.js';
 import Logger from './logger.js';
+import ArgsParser from "./args.js";
 
 
 
@@ -23,45 +24,49 @@ class DbExporter {
     #logger;
     #globalRows;
     #start;
+    #params;
 
 
-    constructor() {
+    constructor(argv = []) {
         this.#globalRows = 0
-        this.#logger = new Logger('quiet')
+        const args = ArgsParser(argv).parse()
+        this.#params = args.get();
+        this.#logger = new Logger(args.mode)
     }
 
 
-    #setDbConfig(params) {
+    #setDbConfig() {
 
-        if (!!params?.env) {
+        if (!!this.#params?.env) {
 
-            if (!PathUtils.isFile(params.env)) {
+            if (!PathUtils.isFile(this.#params.env)) {
 
                 throw new Error('Invalid directory for "env" property.')
             }
 
             dotenv.config({
-                path: params.env,
+                path: this.#params.env,
             });
             this.#database = DbConfigBuilder.loadEnv();
 
-        } else if (!!params?.config) {
+        } else if (!!this.#params?.config) {
 
-            this.#database = DbConfigBuilder.load(params.config);
+            this.#database = DbConfigBuilder.load(this.#params.config);
         } else {
 
             throw new Error('Bad database configuration, you must inform a "env" path or a database "config".')
         }
     }
 
-    #setPaths(params) {
-        if (!params?.path || !PathUtils.isDir(params?.path)) {
-            throw new Error(`Output path directory "${params?.path}" it's not a valid directory path`)
+    #setPaths() {
+
+        if (!this.#params?.outputDir || !PathUtils.isDir(this.#params?.outputDir)) {
+            throw new Error(`Output path directory "${this.#params?.outputDir}" it's not a valid directory path`)
         }
-        const outPath = !!params?.path ? params?.path : import.meta.dirname;
+        const outPath = !!this.#params?.outputDir ? this.#params?.outputDir : import.meta.dirname;
 
         const defaultFilename = `${this.#database.database.toLowerCase()}.sql`;
-        const filename = !!params?.filename ? `${params?.filename}.sql`.replace('.sql.sql', '.sql') : defaultFilename;
+        const filename = !!this.#params?.outFile ? `${this.#params?.outFile}.sql`.replace('.sql.sql', '.sql') : defaultFilename;
 
         const outFile = resolve(outPath, filename);
         this.#isDefaultPath = filename === defaultFilename;
@@ -71,25 +76,14 @@ class DbExporter {
         this.#outFile = outFile;
     }
 
-    /**
-    * Initialize the exporter
-    * @param {
-    * path {string} - the output path of the generated file
-    * filename {filename} - the filename of the generated file
-    * env {string} - the path of env file that contains the configurations
-    * config {string} - if informed will be used for connection
-    * mode {quiet | debug} - log mode
-    * } params 
-    */
-    initialize(params) {
-        this.#logger.setMode(params?.mode ?? 'quiet')
-        this.#logger.log('')
-        this.#logger.log('#'.repeat(50));
-        this.#logger.log(`# DB-SYNC - EXPORT`);
-        this.#logger.log('#'.repeat(50));
-        this.#logger.log('')
-        this.#setDbConfig(params);
-        this.#setPaths(params);
+    initialize() {
+        console.log('')
+        console.log('#'.repeat(50));
+        console.log(`# DB-SYNC - EXPORT`);
+        console.log('#'.repeat(50));
+        console.log('');
+        this.#setDbConfig();
+        this.#setPaths();
         this.#start = new Date();
     }
 
@@ -202,19 +196,12 @@ class DbExporter {
      * @returns 
      */
     async exportTable(table, params = {
-        path: null,
         batchSize: 1000,
         encoding: 'utf-8'
     }) {
 
         const { batchSize, encoding, path } = params;
 
-        if (path) {
-            if (!PathUtils.isDir(path)) {
-                throw new Error(`Output path directory "${params?.path}" it's not a valid directory path`)
-            }
-            this.#outPath = path;
-        }
         if (this.#isDefaultPath) {
             this.#outFile = resolve(this.#outPath, `${table.toLowerCase()}.sql`)
         }
@@ -273,14 +260,30 @@ class DbExporter {
 
     }
 
+    async execute() {
+        if (this.#params.type === 'db') {
+
+            await this.exportDatabase();
+        }
+
+        if (this.#params.type === 'table') {
+
+            await this.exportTable(this.#params.table);
+        }
+    }
+
     finalize() {
         const duration = new Date().getTime() - this.#start.getTime();
-        this.#logger.log('')
-        this.#logger.log('#'.repeat(50));
-        console.log('')
-        console.log('Output file available in:')
-        console.log(this.#outFile)
-        console.log('')
+        if (this.#globalRows > 0) {
+            this.#logger.log('')
+            this.#logger.log('#'.repeat(50));
+            console.log('')
+            console.log('Output file available in:')
+            console.log(this.#outFile)
+            console.log('')
+        } else {
+            console.log('No row exported')
+        }
         this.#logger.log('')
         this.#logger.log('#'.repeat(50));
         this.#logger.log(`# DONE - ${this.#globalRows} rows exported in ${duration / 1000} sec(s)`);
