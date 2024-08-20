@@ -1,6 +1,6 @@
 {
-  "name": "@pablovicz/db-sync",
-  "version": "2.0.0",
+  "name": "@conversu/db-sync",
+  "version": "1.0.0",
   "description": "Db syncronizer for development purposes",
   "main": "index.mjs",
   "type": "module",
@@ -9,7 +9,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/pablovicz/db-sync.git"
+    "url": "git+https://github.com/conversu/db-sync.git"
   },
   "keywords": [
     "database",
@@ -21,9 +21,9 @@
   "author": "Pablo Woinarovicz Ramos",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/pablovicz/db-sync/issues"
+    "url": "https://github.com/conversu/db-sync/issues"
   },
-  "homepage": "https://github.com/pablovicz/db-sync#readme",
+  "homepage": "https://github.com/conversu/db-sync#readme",
   "dependencies": {
     "dotenv": "^16.4.5",
     "pg": "^8.12.0",
